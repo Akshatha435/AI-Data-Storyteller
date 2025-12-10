@@ -1,0 +1,20 @@
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+scikit-learn
+streamlit
+openai
+sentence-transformers
+fpdf
+transformers
+huggingface_hub
+torch         # install CPU version (works everywhere, unless you have GPU)
+requests
+reportlab
+python-dotenv
+
+
+
+

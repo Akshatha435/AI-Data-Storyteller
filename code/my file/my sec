@@ -1,0 +1,12 @@
+# PS C:\Users\akshatha kl\Downloads\AI_DATA> cd "C:\Users\akshatha kl\Downloads\AI_DATA"
+.\.venv\Scripts\Activate.ps1
+(.venv) PS C:\Users\akshatha kl\Downloads\AI_DATA> $env:OPENAI_API_KEY="sk-your-real-key-here"
+>> 
+(.venv) PS C:\Users\akshatha kl\Downloads\AI_DATA> $env:OPENAI_API_KEY="sk-your-real-key-here"           
+>>                                                                                                       
+(.venv) PS C:\Users\akshatha kl\Downloads\AI_DATA> $env:OPENAI_API_KEY="API_KEY= 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"
+(.venv) PS C:\Users\akshatha kl\Downloads\AI_DATA> streamlit run dashboard/app_streamlit.py#
+
+
+
+# API_KEY= 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
