@@ -642,40 +642,68 @@ with tab_visuals:
     # ===============================
     st.markdown("## Multivariate analysis")
 
-    m1, m2 = st.columns(2)
-    with m1:
-        multi_chart = st.selectbox(
-            "Chart type",
-            [
-                "Correlation heatmap",
-                "Stacked bar chart",
-                "Boxplot by category",
-                "Scatter with hue",
-                "Line chart",
-                "Pairplot (numeric only)"
-            ]
+m1, m2 = st.columns(2)
+with m1:
+    multi_chart = st.selectbox(
+        "Chart type",
+        [
+            "Correlation heatmap",
+            "Stacked bar chart",
+            "Boxplot by category",
+            "Scatter with hue",
+            "Line chart",
+            "Pairplot (numeric only)"
+        ]
+    )
+
+with m2:
+    multi_cols = st.multiselect("Select columns (2 or more)", df.columns)
+
+if len(multi_cols) >= 2:
+
+    # Always work on a copy
+    data = df[multi_cols].copy()
+
+    # ---------- CORRELATION ----------
+    if multi_chart == "Correlation heatmap":
+        numeric_df = data.select_dtypes(include="number")
+
+        if numeric_df.shape[1] < 2:
+            st.warning("Select at least two numeric columns for correlation.")
+        else:
+            fig, ax = plt.subplots(figsize=(6, 4))
+            sns.heatmap(
+                numeric_df.corr(),
+                cmap="Blues",
+                center=0,
+                linewidths=0.5,
+                ax=ax
+            )
+            st.pyplot(fig)
+
+    # ---------- STACKED BAR ----------
+    elif multi_chart == "Stacked bar chart":
+        fig, ax = plt.subplots(figsize=(6, 4))
+        pivot = pd.crosstab(data.iloc[:, 0], data.iloc[:, 1])
+        pivot.plot(kind="bar", stacked=True, ax=ax)
+        st.pyplot(fig)
+
+    # ---------- BOXPLOT ----------
+    elif multi_chart == "Boxplot by category":
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.boxplot(
+            data=df,
+            x=multi_cols[0],
+            y=multi_cols[1],
+            ax=ax
         )
+        st.pyplot(fig)
 
-    with m2:
-        multi_cols = st.multiselect("Select columns (2 or more)", df.columns)
-
-    if len(multi_cols) >= 2:
+    # ---------- SCATTER ----------
+    elif multi_chart == "Scatter with hue":
         fig, ax = plt.subplots(figsize=(6, 4))
 
-        if multi_chart == "Correlation heatmap":
-            sns.heatmap(df[multi_cols].corr(), annot=True, cmap="Blues", ax=ax)
-            st.pyplot(fig)
-
-        elif multi_chart == "Stacked bar chart":
-            pivot = pd.crosstab(df[multi_cols[0]], df[multi_cols[1]])
-            pivot.plot(kind="bar", stacked=True, ax=ax)
-            st.pyplot(fig)
-
-        elif multi_chart == "Boxplot by category":
-            sns.boxplot(data=df, x=multi_cols[0], y=multi_cols[1], ax=ax)
-            st.pyplot(fig)
-
-        elif multi_chart == "Scatter with hue":
+        if len(multi_cols) >= 3:
             sns.scatterplot(
                 data=df,
                 x=multi_cols[0],
@@ -683,26 +711,43 @@ with tab_visuals:
                 hue=multi_cols[2],
                 ax=ax
             )
-            st.pyplot(fig)
+        else:
+            sns.scatterplot(
+                data=df,
+                x=multi_cols[0],
+                y=multi_cols[1],
+                ax=ax
+            )
 
-        elif multi_chart == "Line chart":
-            ax.plot(df[multi_cols[0]], df[multi_cols[1]])
-            st.pyplot(fig)
+        st.pyplot(fig)
 
-        elif multi_chart == "Pairplot (numeric only)":
-            pair_fig = sns.pairplot(df[multi_cols].select_dtypes(include=np.number))
+    # ---------- LINE ----------
+    elif multi_chart == "Line chart":
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.plot(df[multi_cols[0]], df[multi_cols[1]])
+        st.pyplot(fig)
+
+    # ---------- PAIRPLOT ----------
+    elif multi_chart == "Pairplot (numeric only)":
+        numeric_df = data.select_dtypes(include="number")
+
+        if numeric_df.shape[1] < 2:
+            st.warning("Select at least two numeric columns for pairplot.")
+        else:
+            pair_fig = sns.pairplot(numeric_df)
             st.pyplot(pair_fig.fig)
 
-        if st.button("Save multivariate chart to report"):
-            img_path = save_figure(fig, f"multi_{multi_chart.replace(' ', '_')}")
-            st.session_state["report_visuals"].append(
-                {
-                    "image": img_path,
-                    "title": f"{multi_chart} – {', '.join(multi_cols)}",
-                    "insight": ""
-                }
-            )
-            st.success("Multivariate chart saved.")
+    # ---------- SAVE ----------
+    if "fig" in locals() and st.button("Save multivariate chart to report"):
+        img_path = save_figure(fig, f"multi_{multi_chart.replace(' ', '_')}")
+        st.session_state["report_visuals"].append(
+            {
+                "image": img_path,
+                "title": f"{multi_chart} – {', '.join(multi_cols)}",
+                "insight": ""
+            }
+        )
+        st.success("Multivariate chart saved.")
             
 if "auto_ai_story" not in st.session_state:
     st.session_state["auto_ai_story"] = None
