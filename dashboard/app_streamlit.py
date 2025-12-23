@@ -763,49 +763,37 @@ with tab_qna:
         unsafe_allow_html=True,
     )
 
-    default_insight_question = (
-        "Provide a comprehensive, end-to-end narrative explaining this dataset.\n"
-        "Cover:\n"
-        "1. What this dataset represents in real-world terms\n"
-        "2. Overall structure, data quality, and variable types\n"
-        "3. Key patterns and trends\n"
-        "4. Relationships and drivers influencing outcomes\n"
-        "5. Risks, anomalies, and warning signals\n"
-        "6. Opportunities for optimization and improvement\n"
-        "7. Strategic decisions this data can support\n"
-        "8. Future scope including predictive and advanced use cases\n\n"
-        "Explain everything in simple business language for non-technical stakeholders."
-    )
-
     if df is None or eda_results is None:
         st.info("Upload a dataset and complete EDA to generate AI insights.")
     else:
-        if st.session_state["auto_ai_story"] is None:
+        default_insight_question = (
+            "Provide a comprehensive, end-to-end narrative explaining this dataset.\n"
+            "Cover real-world meaning, patterns, risks, opportunities, and decisions.\n"
+            "Use simple business language."
+        )
+
+        if st.session_state.get("auto_ai_story") is None:
             with st.spinner("Generating AI narrative..."):
                 st.session_state["auto_ai_story"] = ask_llm_about_data(
-                    default_insight_question,
-                    eda_results,
-                    df
+                    default_insight_question, eda_results, df
                 )
 
-
-    # ---- DISPLAY LONG NARRATIVE (NOT BULLETS) ----
-    st.markdown(
-        "<div class='light-card'>"
-        "<div style='font-size:0.95rem; line-height:1.7;'>"
-        f"{st.session_state['auto_ai_story']}"
-        "</div></div>",
-        unsafe_allow_html=True,
-    )
-
-    if st.button("Save insights to report"):
-        st.session_state["report_ai_answers"].append(
-            {
-                "question": "Comprehensive AI Narrative",
-                "answer": st.session_state["auto_ai_story"],
-            }
+        st.markdown(
+            "<div class='light-card'>"
+            "<div style='font-size:0.95rem; line-height:1.7;'>"
+            f"{st.session_state['auto_ai_story']}"
+            "</div></div>",
+            unsafe_allow_html=True,
         )
-        st.success("Saved AI narrative to report.")
+
+        if st.button("Save insights to report"):
+            st.session_state["report_ai_answers"].append(
+                {
+                    "question": "Comprehensive AI Narrative",
+                    "answer": st.session_state["auto_ai_story"],
+                }
+            )
+            st.success("Saved AI narrative to report.")
             # ---------- TAB 4: EXPORT ----------
 with tab_export:
     st.markdown("### Export options")
