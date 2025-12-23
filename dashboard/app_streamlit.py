@@ -764,18 +764,18 @@ else:
             st.pyplot(pair_fig.fig)
             
 # ---------- TAB 3: AI INSIGHTS ----------
-    with tab_qna:
-         st.markdown("### AI insights")
+with tab_qna:
+    st.markdown("### AI insights")
 
-        st.markdown(
-            "<div class='light-card'>"
-            "<b>What this section does</b><br>"
-            "• Explains the dataset end-to-end in business terms<br>"
-            "• Highlights patterns, risks, opportunities, and decisions<br>"
-            "• Acts as a stakeholder-ready intelligence layer"
-            "</div>",
-            unsafe_allow_html=True,
-        )
+    st.markdown(
+        "<div class='light-card'>"
+        "<b>What this section does</b><br>"
+        "• Explains the dataset end-to-end in business terms<br>"
+        "• Highlights patterns, risks, opportunities, and decisions<br>"
+        "• Acts as a stakeholder-ready intelligence layer"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
     if df is None or eda_results is None:
         st.info("Upload a dataset and complete EDA to generate AI insights.")
