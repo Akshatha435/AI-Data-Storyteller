@@ -640,7 +640,7 @@ with tab_visuals:
 
     # MULTIVARIATE ANALYSIS
     # ===============================
-    size=(6, 4))
+    size=(6, 4)
         sns.boxplot(
             data=df,
             x=multi_cols[0],
