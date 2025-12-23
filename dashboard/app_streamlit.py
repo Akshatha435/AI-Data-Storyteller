@@ -784,8 +784,7 @@ with tab_qna:
     else:
         if st.session_state["auto_ai_story"] is None:
             with st.spinner("Generating AI narrative..."):
-                st.session_state["auto_ai_story"] =
-        ask_llm_about_data(
+                st.session_state["auto_ai_story"] = ask_llm_about_data(
                     default_insight_question,
                     eda_results,
                     df
