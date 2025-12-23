@@ -738,16 +738,22 @@ with tab_qna:
         "Explain everything in simple business language for non-technical stakeholders."
     )
 
-    if st.session_state.get("auto_ai_story") is None:        
+    # ---------------- AI NARRATIVE LOGIC ----------------
+if df is None or eda_results is None:
+    st.info("Upload a dataset and complete EDA to generate AI insights.")
+else:
+    if st.session_state["auto_ai_story"] is None:
         with st.spinner("Generating AI narrative..."):
             st.session_state["auto_ai_story"] = ask_llm_about_data(
-                default_insight_question, eda_results, df
+                default_insight_question,
+                eda_results,
+                df
             )
 
     # ---- DISPLAY LONG NARRATIVE (NOT BULLETS) ----
     st.markdown(
         "<div class='light-card'>"
-        f"<div style='font-size:0.95rem; line-height:1.7;'>"
+        "<div style='font-size:0.95rem; line-height:1.7;'>"
         f"{st.session_state['auto_ai_story']}"
         "</div></div>",
         unsafe_allow_html=True,
