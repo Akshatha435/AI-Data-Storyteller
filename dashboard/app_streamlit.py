@@ -660,11 +660,11 @@ with tab_visuals:
      # ===============================
      # MULTIVARIATE ANALYSIS
      # ===============================
-    st.markdown("## Multivariate analysis")
+     st.markdown("## Multivariate analysis")
 
-    m1, m2 = st.columns(2)
+     m1, m2 = st.columns(2)
 
-    with m1:
+     with m1:
             multi_chart = st.selectbox(
         "Chart type",
         [
@@ -678,16 +678,16 @@ with tab_visuals:
         key="multi_chart_type",
     )
 
-    with m2:
+     with m2:
          multi_cols = st.multiselect(
         "Select columns (2 or more)",
         df.columns,
         key="multi_cols",
     )
 
-    # ---------- VALIDATION ----------
+     # ---------- VALIDATION ----------
     if len(multi_cols) < 2:
-        st.info("Select at least two columns to generate a multivariate chart.")
+         st.info("Select at least two columns to generate a multivariate chart.")
 
     else:
         data = df[multi_cols].copy()
@@ -760,6 +760,8 @@ with tab_visuals:
         numeric_df = data.select_dtypes(include="number")
 
         if numeric_df.shape[1] < 2:
+            st.warning("Select at least two numeric columns.")
+        else:
             pair_fig = sns.pairplot(numeric_df)
             st.pyplot(pair_fig.fig)
             
