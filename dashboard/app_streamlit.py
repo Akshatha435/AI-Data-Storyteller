@@ -465,6 +465,13 @@ def format_as_executive_bullets(text: str):
         bullets.append(f"- {l}")
 
     return bullets[:6]  # executive limit
+# ---------- Session state initialization ----------
+if "auto_ai_story" not in st.session_state:
+    st.session_state["auto_ai_story"] = None
+
+if "report_ai_answers" not in st.session_state:
+    st.session_state["report_ai_answers"] = []
+
 # =====================================================
 #   STEP 3 – TABS (OVERVIEW, VISUALS, Q&A, EXPORT)
 # =====================================================
