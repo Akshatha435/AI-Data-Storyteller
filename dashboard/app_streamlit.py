@@ -657,15 +657,15 @@ with tab_visuals:
             }
         )
         st.success("Bivariate chart saved.")
-    # ===============================
-# MULTIVARIATE ANALYSIS
-# ===============================
-st.markdown("## Multivariate analysis")
+     # ===============================
+     # MULTIVARIATE ANALYSIS
+     # ===============================
+    st.markdown("## Multivariate analysis")
 
-m1, m2 = st.columns(2)
+    m1, m2 = st.columns(2)
 
-with m1:
-    multi_chart = st.selectbox(
+    with m1:
+            multi_chart = st.selectbox(
         "Chart type",
         [
             "Correlation heatmap",
@@ -678,8 +678,8 @@ with m1:
         key="multi_chart_type",
     )
 
-with m2:
-    multi_cols = st.multiselect(
+    with m2:
+          multi_cols = st.multiselect(
         "Select columns (2 or more)",
         df.columns,
         key="multi_cols",
