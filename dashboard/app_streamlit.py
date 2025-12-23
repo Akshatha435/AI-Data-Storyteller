@@ -679,18 +679,18 @@ with tab_visuals:
     )
 
     with m2:
-          multi_cols = st.multiselect(
+         multi_cols = st.multiselect(
         "Select columns (2 or more)",
         df.columns,
         key="multi_cols",
     )
 
     # ---------- VALIDATION ----------
-    if len(multi_cols) < 2:
-        st.info("Select at least two columns to generate a multivariate chart.")
+if len(multi_cols) < 2:
+    st.info("Select at least two columns to generate a multivariate chart.")
 
-    else:
-        data = df[multi_cols].copy()
+else:
+    data = df[multi_cols].copy()
 
     # ---------- CORRELATION ----------
     if multi_chart == "Correlation heatmap":
