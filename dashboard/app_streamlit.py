@@ -657,15 +657,15 @@ with tab_visuals:
             }
         )
         st.success("Bivariate chart saved.")
-     # ===============================
-     # MULTIVARIATE ANALYSIS
-     # ===============================
-    st.markdown("## Multivariate analysis")
+    # ===============================
+# MULTIVARIATE ANALYSIS
+# ===============================
+st.markdown("## Multivariate analysis")
 
-    m1, m2 = st.columns(2)
+m1, m2 = st.columns(2)
 
-    with m1:
-            multi_chart = st.selectbox(
+with m1:
+    multi_chart = st.selectbox(
         "Chart type",
         [
             "Correlation heatmap",
@@ -675,22 +675,18 @@ with tab_visuals:
             "Line chart",
             "Pairplot (numeric only)",
         ],
-        key="multi_chart_type",
     )
 
-    with m2:
-         multi_cols = st.multiselect(
+with m2:
+    multi_cols = st.multiselect(
         "Select columns (2 or more)",
         df.columns,
-        key="multi_cols",
     )
 
-    # ---------- VALIDATION ----------
-    if len(multi_cols) < 2:
-         st.info("Select at least two columns to generate a multivariate chart.")
-
-    else:
-        data = df[multi_cols].copy()
+if len(multi_cols) < 2:
+    st.info("Select at least two columns to generate a multivariate chart.")
+else:
+    data = df[multi_cols].copy()
 
     # ---------- CORRELATION ----------
     if multi_chart == "Correlation heatmap":
@@ -753,6 +749,8 @@ with tab_visuals:
     elif multi_chart == "Line chart":
         fig, ax = plt.subplots(figsize=(6, 4))
         ax.plot(df[multi_cols[0]], df[multi_cols[1]])
+        ax.set_xlabel(multi_cols[0])
+        ax.set_ylabel(multi_cols[1])
         st.pyplot(fig)
 
     # ---------- PAIRPLOT ----------
