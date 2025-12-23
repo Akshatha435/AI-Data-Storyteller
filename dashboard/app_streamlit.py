@@ -30,6 +30,27 @@ if "auto_ai_story" not in st.session_state:
 
 if "report_ai_answers" not in st.session_state:
     st.session_state["report_ai_answers"] = []
+if "report_visuals" not in st.session_state:
+    st.session_state["report_visuals"] = []
+    
+# -------------------------------
+# DEFAULT AI INSIGHT PROMPT
+# -------------------------------
+default_insight_question = """
+Provide a comprehensive, end-to-end narrative explaining this dataset.
+
+Cover:
+1. What this dataset represents in real-world terms
+2. Overall structure, data quality, and variable types
+3. Key patterns and trends
+4. Relationships and drivers influencing outcomes
+5. Risks, anomalies, and warning signals
+6. Opportunities for optimization and improvement
+7. Strategic decisions this data can support
+8. Future scope including predictive and advanced use cases
+
+Explain everything in simple business language for non-technical stakeholders.
+"""
 # -----------------------
 def ask_llm_about_data(question: str, eda_results: dict, df):
     try:
@@ -761,9 +782,10 @@ with tab_qna:
     if df is None or eda_results is None:
         st.info("Upload a dataset and complete EDA to generate AI insights.")
     else:
-        if st.session_state.get("auto_ai_story") is None:
+        if st.session_state["auto_ai_story"] is None:
             with st.spinner("Generating AI narrative..."):
-                st.session_state["auto_ai_story"] = ask_llm_about_data(
+                st.session_state["auto_ai_story"] =
+        ask_llm_about_data(
                     default_insight_question,
                     eda_results,
                     df
@@ -785,8 +807,6 @@ with tab_qna:
                 }
             )
             st.success("Saved AI narrative to report.")
-
-    
             # ---------- TAB 4: EXPORT ----------
 with tab_export:
     st.markdown("### Export options")
