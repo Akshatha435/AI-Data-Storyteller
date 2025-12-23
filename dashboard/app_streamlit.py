@@ -24,6 +24,12 @@ import streamlit as st
 
 # ---------- Streamlit page config ----------
 st.set_page_config(page_title="AI Data Storyteller", layout="wide", page_icon="📊")
+# ---------- Session state initialization ----------
+if "auto_ai_story" not in st.session_state:
+    st.session_state["auto_ai_story"] = None
+
+if "report_ai_answers" not in st.session_state:
+    st.session_state["report_ai_answers"] = []
 # -----------------------
 def ask_llm_about_data(question: str, eda_results: dict, df):
     try:
@@ -725,7 +731,7 @@ with tab_qna:
         "Explain everything in simple business language for non-technical stakeholders."
     )
 
-    if not st.session_state.get("auto_ai_story"):        
+    if st.session_state.get["auto_ai_story"] is None:        
         with st.spinner("Generating AI narrative..."):
             st.session_state["auto_ai_story"] = ask_llm_about_data(
                 default_insight_question, eda_results, df
