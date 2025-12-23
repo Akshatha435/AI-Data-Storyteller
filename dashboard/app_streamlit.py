@@ -749,12 +749,6 @@ if len(multi_cols) >= 2:
         )
         st.success("Multivariate chart saved.")
             
-if "auto_ai_story" not in st.session_state:
-    st.session_state["auto_ai_story"] = None
-
-if "report_ai_answers" not in st.session_state:
-    st.session_state["report_ai_answers"] = []
-
 # ---------- TAB 3: AI INSIGHTS ----------
 with tab_qna:
     st.markdown("### AI insights")
@@ -794,25 +788,6 @@ with tab_qna:
                     df
                 )
 
-        st.markdown(
-            "<div class='light-card'>"
-            "<div style='font-size:0.95rem; line-height:1.7;'>"
-            f"{st.session_state['auto_ai_story']}"
-            "</div></div>",
-            unsafe_allow_html=True,
-        )
-   
-    # ---------------- AI NARRATIVE LOGIC ----------------
-if df is None or eda_results is None:
-    st.info("Upload a dataset and complete EDA to generate AI insights.")
-else:
-    if st.session_state["auto_ai_story"] is None:
-        with st.spinner("Generating AI narrative..."):
-            st.session_state["auto_ai_story"] = ask_llm_about_data(
-                default_insight_question,
-                eda_results,
-                df
-            )
 
     # ---- DISPLAY LONG NARRATIVE (NOT BULLETS) ----
     st.markdown(
