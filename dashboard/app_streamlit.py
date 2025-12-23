@@ -760,8 +760,6 @@ else:
         numeric_df = data.select_dtypes(include="number")
 
         if numeric_df.shape[1] < 2:
-            st.warning("Select at least two numeric columns.")
-        else:
             pair_fig = sns.pairplot(numeric_df)
             st.pyplot(pair_fig.fig)
             
@@ -894,3 +892,4 @@ with tab_export:
                 "report_generator.create_report is not available. "
                 "Make sure code/report_generator.py exists."
             )
+
