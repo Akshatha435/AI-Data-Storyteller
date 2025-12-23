@@ -24,6 +24,43 @@ import streamlit as st
 
 # ---------- Streamlit page config ----------
 st.set_page_config(page_title="AI Data Storyteller", layout="wide", page_icon="📊")
+# -----------------------
+def ask_llm_about_data(question: str, eda_results: dict, df):
+    try:
+        from openai import OpenAI
+        import streamlit as st
+
+        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+        data_summary = f"""
+        Dataset shape: {df.shape}
+        Columns: {list(df.columns)}
+        EDA summary: {eda_results}
+        """
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a senior data analyst. "
+                        "Explain insights in executive-level, business-focused language. "
+                        "Avoid technical jargon."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": f"{question}\n\nContext:\n{data_summary}"
+                }
+            ],
+            max_tokens=900
+        )
+
+        return response.choices[0].message.content.strip()
+
+    except Exception as e:
+        return f"❌ AI Error: {e}"
 
 # ---------- Global styling (dark navy background + visibility) ----------
 st.markdown(
@@ -501,7 +538,6 @@ def ai_explain_chart(chart_type: str, columns: list, df: pd.DataFrame) -> str:
     )
 
 # ---------- TAB 2: VISUAL ANALYTICS ----------
-# ---------- TAB 2: VISUAL ANALYTICS ----------
 with tab_visuals:
     st.markdown("### Visual analytics")
 
@@ -654,11 +690,16 @@ with tab_visuals:
                 }
             )
             st.success("Multivariate chart saved.")
+            
+if "auto_ai_story" not in st.session_state:
+    st.session_state["auto_ai_story"] = None
 
+if "report_ai_answers" not in st.session_state:
+    st.session_state["report_ai_answers"] = []
 
 # ---------- TAB 3: AI INSIGHTS ----------
 with tab_qna:
-    st.markdown("### AI insights (decision-oriented)")
+    st.markdown("### AI insights")
 
     st.markdown(
         "<div class='light-card'>"
@@ -684,7 +725,7 @@ with tab_qna:
         "Explain everything in simple business language for non-technical stakeholders."
     )
 
-    if st.session_state["auto_ai_story"] is None:
+    if not st.session_state.get("auto_ai_story"):        
         with st.spinner("Generating AI narrative..."):
             st.session_state["auto_ai_story"] = ask_llm_about_data(
                 default_insight_question, eda_results, df
