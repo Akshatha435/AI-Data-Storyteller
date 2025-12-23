@@ -194,20 +194,18 @@ with c2:
     with st.container(border=True):
         st.subheader("📊 Visual Analytics")
         st.write(
-            "- Univariate, bivariate, multivariate views\n"
-            "- Histograms, boxplots, bar charts\n"
-            "- Scatter plots and correlation heatmaps\n"
-            "- Professional dark-blue visual style"
+            "- Explore Univariate, bivariate, multivariate views\n"
+            "- Uncover distributions, relationships, patterns that \n"
+            " Drive data backed decisions \n"
         )
 
 with c3:
     with st.container(border=True):
         st.subheader("🤖 AI Narrative & Export")
         st.write(
-            "- Ask AI to explain what the data is saying\n"
-            "- Get clear, business-ready commentary\n"
-            "- Save key visuals and AI answers\n"
-            "- Export a consolidated PDF report"
+            "- Consolidate insights, visuals and AI interpretations \n"
+            " into a professional report to support"
+            "decision-making \n"
         )
 
 st.markdown("---")
@@ -335,6 +333,95 @@ def make_pdf_safe(text: str) -> str:
     return text.encode("latin-1", "replace").decode("latin-1")
 
 
+def ask_llm_about_data(question: str, eda_results: dict, df: pd.DataFrame) -> str:
+    api_key = os.environ.get("OPENAI_API_KEY")
+
+    if openai_client is not None and api_key:
+        if get_prompt_for_eda is not None:
+            eda_prompt = get_prompt_for_eda(eda_results, max_chars=2000)
+        else:
+            eda_prompt = f"Rows: {df.shape[0]}, Columns: {df.shape[1]}."
+
+        sample_csv = df.head(25).to_csv(index=False)
+
+        system_msg = (
+            "You are a senior business and data analytics consultant. "
+            "Explain insights in structured, decision-oriented language."
+        )
+
+        user_msg = (
+            f"Question:\n{question}\n\n"
+            f"EDA Summary:\n{eda_prompt}\n\n"
+            f"Sample data:\n{sample_csv}"
+        )
+
+        try:
+            resp = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": user_msg},
+                ],
+                temperature=0.35,
+                max_tokens=700,
+            )
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            return f"AI error: {e}"
+
+    return (
+        "AI insights unavailable. Based on the data structure, focus on trends, "
+        "outliers, relationships, and segments that influence outcomes."
+    )
+def to_executive_bullets(ai_text: str) -> list:
+    """
+    Converts AI narrative into executive-ready bullet insights
+    for non-technical stakeholders.
+    """
+    if not ai_text or not isinstance(ai_text, str):
+        return []
+
+    lines = [l.strip() for l in ai_text.split("\n") if len(l.strip()) > 25]
+
+    bullets = []
+    for line in lines:
+        clean = (
+            line.replace("•", "")
+                .replace("-", "")
+                .replace("1.", "")
+                .replace("2.", "")
+                .replace("3.", "")
+                .strip()
+        )
+        if clean and clean not in bullets:
+            bullets.append(clean)
+
+        if len(bullets) == 6:  # executive limit
+            break
+
+    return bullets
+
+
+def format_as_executive_bullets(text: str):
+    """
+    Converts AI text into executive bullet points.
+    """
+    if not text:
+        return []
+
+    lines = [
+        l.strip("-• ").strip()
+        for l in text.split("\n")
+        if len(l.strip()) > 12
+    ]
+
+    bullets = []
+    for l in lines:
+        if not l.endswith("."):
+            l += "."
+        bullets.append(f"- {l}")
+
+    return bullets[:6]  # executive limit
 # =====================================================
 #   STEP 3 – TABS (OVERVIEW, VISUALS, Q&A, EXPORT)
 # =====================================================
@@ -368,360 +455,259 @@ with tab_overview:
         )
     )
 
-# ---------- TAB 2: VISUALS ----------
-with tab_visuals:
-    st.markdown("### Visual analytics")
-
-    cat_cols_v = eda_results["types"].get("categorical", [])
-    num_cols_v = eda_results["types"].get("numerical", [])
-
-    st.markdown("**Univariate analysis (single column)**")
-    c1, c2 = st.columns(2)
-    with c1:
-        show_bar = st.checkbox("Bar chart (categorical)", value=bool(cat_cols_v))
-        show_hist = st.checkbox("Histogram (numeric)", value=bool(num_cols_v))
-    with c2:
-        show_box = st.checkbox("Boxplot (numeric)", value=bool(num_cols_v))
-
-    st.markdown("**Bivariate analysis (two columns)**")
-    show_scatter = st.checkbox("Scatter plot (numeric vs numeric)", value=False)
-
-    st.markdown("**Multivariate analysis (multiple numeric columns)**")
-    show_heatmap = st.checkbox(
-        "Correlation heatmap", value=(len(num_cols_v) >= 2)
-    )
-
-    # Bar chart
-    if show_bar and cat_cols_v:
-        bar_col = st.selectbox("Bar chart – choose categorical column", cat_cols_v, key="bar_col")
-        fig, ax = plt.subplots(figsize=(5, 3))
-        counts = df[bar_col].value_counts().nlargest(10)
-        counts.plot(kind="bar", ax=ax, color="#025EC4")
-        ax.set_title(f"Top categories – {bar_col}")
-        ax.tick_params(axis="x", rotation=45)
-        st.pyplot(fig, use_container_width=False)
-        full = save_figure(fig, f"bar_{bar_col}")
-        if len(counts) > 0:
-            top_cat = counts.index[0]
-            top_pct = counts.iloc[0] / counts.sum()
-            insight_bar = (
-                f"For **{bar_col}**, the top category '{top_cat}' contributes about "
-                f"{top_pct:.1%} of occurrences. This helps you focus on the most dominant segments."
-            )
-        else:
-            insight_bar = f"Bar chart ({bar_col}): no data available."
-        st.caption(insight_bar)
-
-        if st.button("Save this visual to report", key=f"save_bar_{bar_col}"):
-            st.session_state["report_visuals"].append(
-                {"image": full, "title": f"Bar chart – {bar_col}", "insight": insight_bar}
-            )
-            st.success("Saved bar chart to report.")
-
-    # Histogram
-    if show_hist and num_cols_v:
-        hist_col = st.selectbox("Histogram – choose numeric column", num_cols_v, key="hist_col")
-        bins = st.slider("Histogram bins", 10, 80, 30, key="hist_bins")
-        fig, ax = plt.subplots(figsize=(5, 3))
-        df[hist_col].dropna().plot(kind="hist", bins=bins, ax=ax, color="#043780", alpha=0.9)
-        ax.set_title(f"Distribution of {hist_col}")
-        st.pyplot(fig, use_container_width=False)
-        full = save_figure(fig, f"hist_{hist_col}")
-        s = df[hist_col].dropna()
-        skew = s.skew()
-        mean = s.mean()
-        median = s.median()
-        std = s.std()
-        shape_text = (
-            "right-skewed (tail on the right)" if skew > 0.3
-            else "left-skewed (tail on the left)" if skew < -0.3
-            else "roughly symmetric"
-        )
-        insight_hist = (
-            f"The numeric feature **{hist_col}** has mean {mean:.2f} and median {median:.2f}, "
-            f"with standard deviation {std:.2f}. The distribution is {shape_text}, "
-            "which matters when interpreting averages and extremes."
-        )
-        st.caption(insight_hist)
-
-        if st.button("Save this visual to report", key=f"save_hist_{hist_col}"):
-            st.session_state["report_visuals"].append(
-                {"image": full, "title": f"Histogram – {hist_col}", "insight": insight_hist}
-            )
-            st.success("Saved histogram to report.")
-
-    # Boxplot
-    if show_box and num_cols_v:
-        box_col = st.selectbox("Boxplot – choose numeric column", num_cols_v, key="box_col")
-        fig, ax = plt.subplots(figsize=(5, 2.2))
-        sns.boxplot(x=df[box_col], ax=ax, color="#0ECCED")
-        ax.set_title(f"Boxplot of {box_col}")
-        st.pyplot(fig, use_container_width=False)
-        full = save_figure(fig, f"box_{box_col}")
-        q1 = df[box_col].quantile(0.25)
-        q3 = df[box_col].quantile(0.75)
-        iqr = q3 - q1
-        out_low = int((df[box_col] < (q1 - 1.5 * iqr)).sum())
-        out_high = int((df[box_col] > (q3 + 1.5 * iqr)).sum())
-        insight_box = (
-            f"The feature **{box_col}** shows around {out_low + out_high} potential outliers. "
-            "These extreme values can strongly influence averages and models, so they are "
-            "good candidates for review or capping."
-        )
-        st.caption(insight_box)
-
-        if st.button("Save this visual to report", key=f"save_box_{box_col}"):
-            st.session_state["report_visuals"].append(
-                {"image": full, "title": f"Boxplot – {box_col}", "insight": insight_box}
-            )
-            st.success("Saved boxplot to report.")
-
-    # Scatter
-    if show_scatter and len(num_cols_v) >= 2:
-        scatter_x = st.selectbox("Scatter X axis", num_cols_v, key="scatter_x")
-        scatter_y = st.selectbox(
-            "Scatter Y axis",
-            [c for c in num_cols_v if c != scatter_x],
-            key="scatter_y",
-        )
-        fig, ax = plt.subplots(figsize=(5, 3))
-        ax.scatter(df[scatter_x], df[scatter_y], alpha=0.5, s=12, color="#0ECCED")
-        ax.set_xlabel(scatter_x)
-        ax.set_ylabel(scatter_y)
-        ax.set_title(f"Scatter: {scatter_x} vs {scatter_y}")
-        st.pyplot(fig, use_container_width=False)
-        full = save_figure(fig, f"scatter_{scatter_x}_vs_{scatter_y}")
-        corr_val = df[[scatter_x, scatter_y]].corr().iloc[0, 1]
-        insight_scatter = (
-            f"Between **{scatter_x}** and **{scatter_y}**, the correlation is {corr_val:.2f}. "
-            "Values closer to +1 or -1 indicate a stronger linear relationship, which helps "
-            "when selecting drivers for modelling or forecasting."
-        )
-        st.caption(insight_scatter)
-
-        if st.button("Save this visual to report", key=f"save_scatter_{scatter_x}_{scatter_y}"):
-            st.session_state["report_visuals"].append(
-                {
-                    "image": full,
-                    "title": f"Scatter – {scatter_x} vs {scatter_y}",
-                    "insight": insight_scatter,
-                }
-            )
-            st.success("Saved scatter plot to report.")
-
-    # Heatmap
-    if show_heatmap and len(num_cols_v) >= 2:
-        corr_df = pd.DataFrame(eda_results["correlations"])
-        fig, ax = plt.subplots(figsize=(6, 3.8))
-        sns.heatmap(corr_df.astype(float), annot=True, cmap="Blues", ax=ax)
-        ax.set_title("Correlation heatmap")
-        st.pyplot(fig, use_container_width=False)
-        full = save_figure(fig, "corr_heatmap")
-        pairs = []
-        for a in corr_df:
-            for b, v in corr_df[a].items():
-                if a != b:
-                    pairs.append(((a, b), v))
-        pairs_sorted = sorted(
-            pairs,
-            key=lambda x: abs(x[1]) if isinstance(x[1], (int, float)) else 0,
-            reverse=True,
-        )
-        if pairs_sorted:
-            (a, b), v = pairs_sorted[0]
-            insight_heat = (
-                f"The strongest linear link in this dataset is between **{a}** and **{b}** "
-                f"(correlation ≈ {v:.2f}). These variables move together and deserve attention "
-                "when building metrics or models."
-            )
-        else:
-            insight_heat = "No strong correlations detected between numeric features."
-        st.caption(insight_heat)
-
-        if st.button("Save this visual to report", key="save_heatmap"):
-            st.session_state["report_visuals"].append(
-                {"image": full, "title": "Correlation heatmap", "insight": insight_heat}
-            )
-            st.success("Saved heatmap to report.")
-
-# ---------- Combined observations for summary / report ----------
-obs_lines = []
-obs_lines.append(
-    f"- Dataset shape: {eda_results['summary']['shape'][0]} rows × "
-    f"{eda_results['summary']['shape'][1]} columns."
-)
-missing_sorted = sorted(
-    eda_results["summary"]["missing_values"].items(),
-    key=lambda x: x[1],
-    reverse=True,
-)
-missing_top = [f"{k}: {v}" for k, v in missing_sorted if v > 0][:6]
-if missing_top:
-    obs_lines.append("- Columns with missing values (top): " + "; ".join(missing_top))
-else:
-    obs_lines.append("- No missing values after preprocessing.")
-
-nums_sample = eda_results["types"].get("numerical", [])[:6]
-cats_sample = eda_results["types"].get("categorical", [])[:6]
-if nums_sample:
-    obs_lines.append(f"- Example numeric columns: {', '.join(nums_sample)}")
-if cats_sample:
-    obs_lines.append(f"- Example categorical columns: {', '.join(cats_sample)}")
-
-combined_text_default = "\n".join(obs_lines)
-if not st.session_state["combined_text_for_report"]:
-    st.session_state["combined_text_for_report"] = combined_text_default
-
-
-# ---------- LLM helper ----------
-def ask_llm_about_data(question: str, eda_results: dict, df: pd.DataFrame) -> str:
+def ai_explain_chart(chart_type: str, columns: list, df: pd.DataFrame) -> str:
     """
-    Use OpenAI to answer questions about the dataset and suggest actions.
+    AI explanation for charts – stakeholder-ready insights.
+    Uses OpenAI if available, otherwise falls back to rule-based insight.
     """
+
     api_key = os.environ.get("OPENAI_API_KEY")
 
-    if openai_client is not None and api_key:
-        if get_prompt_for_eda is not None:
-            eda_prompt = get_prompt_for_eda(eda_results, max_chars=2000)
-        else:
-            eda_prompt = f"Rows: {df.shape[0]}, Columns: {df.shape[1]}."
-
-        sample_csv = df.head(30).to_csv(index=False)
-
-        system_msg = (
-            "You are a senior data analyst. You receive: (1) an EDA-style summary, "
-            "and (2) a small sample of the dataset.\n"
-            "Write in clear business language (no heavy statistics). "
-            "Structure your answer as:\n"
-            "1) A narrative explaining what this dataset is about and what the numbers are saying.\n"
-            "2) 3–5 numbered, concrete actions or decisions a business could take.\n"
-        )
-
-        user_msg = (
-            f"Question: {question}\n\n"
-            f"EDA summary:\n{eda_prompt}\n\n"
-            f"Sample data (CSV head):\n{sample_csv}"
-        )
-
+    # ---------- AI path ----------
+    if openai_client and api_key:
         try:
+            sample = df[columns].head(20).to_csv(index=False)
+
+            prompt = (
+                "You are a senior business data analyst.\n\n"
+                f"Chart type: {chart_type}\n"
+                f"Columns involved: {columns}\n\n"
+                "Explain:\n"
+                "1) What this chart reveals about the data\n"
+                "2) Why it matters for decision-making\n"
+                "3) What actions a stakeholder might consider\n\n"
+                f"Sample data:\n{sample}"
+            )
+
             resp = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": system_msg},
-                    {"role": "user", "content": user_msg},
+                    {"role": "system", "content": "You explain charts clearly for business users."},
+                    {"role": "user", "content": prompt},
                 ],
                 temperature=0.35,
-                max_tokens=900,
+                max_tokens=220,
             )
             return resp.choices[0].message.content.strip()
-        except Exception as e:
-            return f"AI error while answering question: {e}"
 
-    # Fallback text if API not available
+        except Exception:
+            pass  # fall back safely
+
+    # ---------- Fallback (NO AI) ----------
     return (
-        "AI insights could not be generated (missing API key or client).\n\n"
-        "However, based on the current analysis you can already note:\n\n"
-        + st.session_state["combined_text_for_report"]
-        + "\n\nUse this to explain the dataset structure, key fields and any data quality points."
+        f"This {chart_type.lower()} highlights patterns across {', '.join(columns)}. "
+        "It helps identify dominant segments, trends, or relationships that may impact "
+        "performance, planning, or prioritization decisions."
     )
 
+# ---------- TAB 2: VISUAL ANALYTICS ----------
+# ---------- TAB 2: VISUAL ANALYTICS ----------
+with tab_visuals:
+    st.markdown("### Visual analytics")
 
-# ---------- TAB 3: AI NARRATIVE & Q&A ----------
-with tab_qna:
-    st.markdown("### AI narrative & Q&A")
+    num_cols = df.select_dtypes(include=np.number).columns.tolist()
+    cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
 
-    st.markdown("**Overview & cleaning notes (used in the report):**")
-    combined_text_editable = st.text_area(
-        "",
-        value=st.session_state["combined_text_for_report"],
-        height=160,
-    )
-    st.session_state["combined_text_for_report"] = combined_text_editable
+    # ===============================
+    # UNIVARIATE ANALYSIS
+    # ===============================
+    st.markdown("## Univariate analysis")
 
-    st.markdown("---")
+    u1, u2 = st.columns(2)
+    with u1:
+        uni_col = st.selectbox("Select column", df.columns)
+    with u2:
+        uni_chart = st.selectbox(
+            "Chart type",
+            ["Histogram", "Bar chart", "Boxplot", "Pie chart"]
+        )
 
-    # Automatic long-form dataset story – run once
-    default_story_question = (
-        "Give a comprehensive, narrative-style explanation of this dataset – "
-        "what it contains, how the main variables behave, key patterns, risks and "
-        "opportunities, and how a business should interpret it."
-    )
-    if st.session_state["auto_ai_story"] is None:
-        with st.spinner("Generating an overall story for this dataset..."):
-            st.session_state["auto_ai_story"] = ask_llm_about_data(
-                default_story_question, eda_results, df
+    fig, ax = plt.subplots()
+
+    if uni_chart == "Histogram" and uni_col in num_cols:
+        ax.hist(df[uni_col].dropna(), bins=30, color="#025EC4")
+    elif uni_chart == "Bar chart":
+        df[uni_col].value_counts().head(10).plot(kind="bar", ax=ax, color="#025EC4")
+    elif uni_chart == "Boxplot" and uni_col in num_cols:
+        sns.boxplot(x=df[uni_col], ax=ax, color="#025EC4")
+    elif uni_chart == "Pie chart":
+        df[uni_col].value_counts().head(6).plot(kind="pie", ax=ax, autopct="%1.1f%%")
+
+    ax.set_title(f"{uni_chart} – {uni_col}")
+    st.pyplot(fig)
+
+    if st.button("Save univariate chart to report"):
+        img_path = save_figure(fig, f"uni_{uni_col}")
+        st.session_state["report_visuals"].append(
+            {
+                "image": img_path,
+                "title": f"{uni_chart} – {uni_col}",
+                "insight": ""  # intentionally empty
+            }
+        )
+        st.success("Univariate chart saved.")
+
+    # ===============================
+    # BIVARIATE ANALYSIS
+    # ===============================
+    st.markdown("## Bivariate analysis")
+
+    b1, b2, b3 = st.columns(3)
+    with b1:
+        x_col = st.selectbox("X axis", df.columns, key="bi_x")
+    with b2:
+        y_col = st.selectbox("Y axis", df.columns, key="bi_y")
+    with b3:
+        bi_chart = st.selectbox(
+            "Chart type",
+            ["Scatter plot", "Grouped bar chart", "Line chart", "Pie chart"]
+        )
+
+    fig, ax = plt.subplots()
+
+    if bi_chart == "Scatter plot" and x_col in num_cols and y_col in num_cols:
+        ax.scatter(df[x_col], df[y_col], alpha=0.6, color="#025EC4")
+    elif bi_chart == "Grouped bar chart":
+        sns.barplot(data=df, x=x_col, y=y_col, ax=ax)
+    elif bi_chart == "Line chart":
+        ax.plot(df[x_col], df[y_col], color="#025EC4")
+    elif bi_chart == "Pie chart":
+        df.groupby(x_col)[y_col].sum().head(6).plot(kind="pie", ax=ax, autopct="%1.1f%%")
+
+    ax.set_title(f"{bi_chart} – {x_col} vs {y_col}")
+    st.pyplot(fig)
+
+    if st.button("Save bivariate chart to report"):
+        img_path = save_figure(fig, f"bi_{x_col}_{y_col}")
+        st.session_state["report_visuals"].append(
+            {
+                "image": img_path,
+                "title": f"{bi_chart} – {x_col} vs {y_col}",
+                "insight": ""
+            }
+        )
+        st.success("Bivariate chart saved.")
+
+    # ===============================
+    # MULTIVARIATE ANALYSIS
+    # ===============================
+    st.markdown("## Multivariate analysis")
+
+    m1, m2 = st.columns(2)
+    with m1:
+        multi_chart = st.selectbox(
+            "Chart type",
+            [
+                "Correlation heatmap",
+                "Stacked bar chart",
+                "Boxplot by category",
+                "Scatter with hue",
+                "Line chart",
+                "Pairplot (numeric only)"
+            ]
+        )
+
+    with m2:
+        multi_cols = st.multiselect("Select columns (2 or more)", df.columns)
+
+    if len(multi_cols) >= 2:
+        fig, ax = plt.subplots(figsize=(6, 4))
+
+        if multi_chart == "Correlation heatmap":
+            sns.heatmap(df[multi_cols].corr(), annot=True, cmap="Blues", ax=ax)
+            st.pyplot(fig)
+
+        elif multi_chart == "Stacked bar chart":
+            pivot = pd.crosstab(df[multi_cols[0]], df[multi_cols[1]])
+            pivot.plot(kind="bar", stacked=True, ax=ax)
+            st.pyplot(fig)
+
+        elif multi_chart == "Boxplot by category":
+            sns.boxplot(data=df, x=multi_cols[0], y=multi_cols[1], ax=ax)
+            st.pyplot(fig)
+
+        elif multi_chart == "Scatter with hue":
+            sns.scatterplot(
+                data=df,
+                x=multi_cols[0],
+                y=multi_cols[1],
+                hue=multi_cols[2],
+                ax=ax
             )
+            st.pyplot(fig)
 
-    st.markdown("#### AI dataset story")
+        elif multi_chart == "Line chart":
+            ax.plot(df[multi_cols[0]], df[multi_cols[1]])
+            st.pyplot(fig)
+
+        elif multi_chart == "Pairplot (numeric only)":
+            pair_fig = sns.pairplot(df[multi_cols].select_dtypes(include=np.number))
+            st.pyplot(pair_fig.fig)
+
+        if st.button("Save multivariate chart to report"):
+            img_path = save_figure(fig, f"multi_{multi_chart.replace(' ', '_')}")
+            st.session_state["report_visuals"].append(
+                {
+                    "image": img_path,
+                    "title": f"{multi_chart} – {', '.join(multi_cols)}",
+                    "insight": ""
+                }
+            )
+            st.success("Multivariate chart saved.")
+
+
+# ---------- TAB 3: AI INSIGHTS ----------
+with tab_qna:
+    st.markdown("### AI insights (decision-oriented)")
+
     st.markdown(
         "<div class='light-card'>"
-        f"<div style='font-size:0.9rem;line-height:1.55;color:#E5F0FF;'>"
+        "<b>What this section does</b><br>"
+        "• Explains the dataset end-to-end in business terms<br>"
+        "• Highlights patterns, risks, opportunities, and decisions<br>"
+        "• Acts as a stakeholder-ready intelligence layer"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    default_insight_question = (
+        "Provide a comprehensive, end-to-end narrative explaining this dataset.\n"
+        "Cover:\n"
+        "1. What this dataset represents in real-world terms\n"
+        "2. Overall structure, data quality, and variable types\n"
+        "3. Key patterns and trends\n"
+        "4. Relationships and drivers influencing outcomes\n"
+        "5. Risks, anomalies, and warning signals\n"
+        "6. Opportunities for optimization and improvement\n"
+        "7. Strategic decisions this data can support\n"
+        "8. Future scope including predictive and advanced use cases\n\n"
+        "Explain everything in simple business language for non-technical stakeholders."
+    )
+
+    if st.session_state["auto_ai_story"] is None:
+        with st.spinner("Generating AI narrative..."):
+            st.session_state["auto_ai_story"] = ask_llm_about_data(
+                default_insight_question, eda_results, df
+            )
+
+    # ---- DISPLAY LONG NARRATIVE (NOT BULLETS) ----
+    st.markdown(
+        "<div class='light-card'>"
+        f"<div style='font-size:0.95rem; line-height:1.7;'>"
         f"{st.session_state['auto_ai_story']}"
         "</div></div>",
         unsafe_allow_html=True,
     )
 
-    if st.button("Save this story to report"):
+    if st.button("Save insights to report"):
         st.session_state["report_ai_answers"].append(
             {
-                "question": "Overall dataset story",
+                "question": "Comprehensive AI Narrative",
                 "answer": st.session_state["auto_ai_story"],
             }
         )
-        st.success("Saved AI dataset story to report.")
-
-    st.markdown("---")
-    st.markdown("#### Ask your own question on this dataset")
-
-    numeric_cols = df.select_dtypes(include=["float", "int"]).columns.tolist()
-    categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
-
-    suggestions = []
-    if numeric_cols:
-        suggestions.append(f"What is the overall trend of '{numeric_cols[0]}'?")
-        if len(numeric_cols) > 1:
-            suggestions.append(
-                f"How are '{numeric_cols[0]}' and '{numeric_cols[1]}' related?"
-            )
-    if categorical_cols:
-        suggestions.append(
-            f"Which categories in '{categorical_cols[0]}' should we pay most attention to?"
-        )
-    suggestions.append(
-        "What are the most important insights from this dataset and what actions would you suggest?"
-    )
-
-    st.markdown("**Suggested questions:**")
-    chosen_q = st.radio("", suggestions, index=len(suggestions) - 1)
-
-    st.markdown("**Or type your own question:**")
-    user_question = st.text_input(
-        "",
-        value="",
-        placeholder="Example: Which variables appear to drive performance the most?",
-    )
-
-    if st.button("Ask AI on this dataset"):
-        final_q = user_question.strip() or chosen_q
-        with st.spinner("Thinking about your data..."):
-            answer = ask_llm_about_data(final_q, eda_results, df)
-
-        st.markdown(
-            "<div class='light-card'>"
-            "<div style='font-size:1rem;font-weight:650;color:#0ECCED;margin-bottom:6px;'>"
-            "AI answer</div>"
-            f"<div style='font-size:0.9rem;line-height:1.55;color:#E5F0FF;'>{answer}</div>"
-            "</div>",
-            unsafe_allow_html=True,
-        )
-
-        if st.button("Save this answer to report"):
-            st.session_state["report_ai_answers"].append(
-                {"question": final_q, "answer": answer}
-            )
-            st.success("Saved AI answer to report.")
-
-# ---------- TAB 4: EXPORT ----------
+        st.success("Saved AI narrative to report.")
+            # ---------- TAB 4: EXPORT ----------
 with tab_export:
     st.markdown("### Export options")
 
@@ -739,7 +725,10 @@ with tab_export:
         f"**Saved AI answers:** {len(st.session_state['report_ai_answers'])}"
     )
 
-    report_name = st.text_input("Report filename (without extension)", value="ai_data_story")
+    report_name = st.text_input(
+        "Report filename (without extension)",
+        value="ai_data_story"
+    )
 
     if st.button("Create full PDF (summary + visuals + AI insights)"):
         report_path = str(REPORT_DIR / f"{report_name}.pdf")
@@ -749,16 +738,23 @@ with tab_export:
         lines.append("Overview & data notes:\n")
         lines.append(st.session_state["combined_text_for_report"])
         lines.append("\n\nSaved visuals (high-level interpretation):\n")
+
         for v in st.session_state["report_visuals"]:
             lines.append(f"- {v.get('title', 'Visual')}: {v.get('insight', '')}")
-        lines.append("\n\nAI narratives & Q&A:\n")
+
+        lines.append("\n\nExecutive AI Insights:\n")
+
         for qa in st.session_state["report_ai_answers"]:
-            lines.append(f"Q: {qa.get('question','')}\nA: {qa.get('answer','')}\n")
+            lines.append(f"{qa.get('question','')}:")
+            bullets = format_as_executive_bullets(qa.get("answer", ""))
+            for b in bullets:
+                lines.append(b)
+            lines.append("")
 
         report_text = "\n".join(lines)
         report_text_safe = make_pdf_safe(report_text)
 
-        # Prepare image info for report_generator
+        # Prepare image info
         images_info = []
         for v in st.session_state["report_visuals"]:
             img_path = v.get("image")
@@ -773,24 +769,12 @@ with tab_export:
 
         if create_report is not None:
             try:
-                # Try different call signatures but always with safe text
-                try:
-                    create_report(report_path, report_text_safe, images_info=images_info)
-                except TypeError:
-                    try:
-                        image_paths = [
-                            v["image"]
-                            for v in st.session_state["report_visuals"]
-                            if "image" in v and Path(v["image"]).exists()
-                        ]
-                        create_report(report_path, report_text_safe, image_paths=image_paths)
-                    except TypeError:
-                        image_paths = [
-                            v["image"]
-                            for v in st.session_state["report_visuals"]
-                            if "image" in v and Path(v["image"]).exists()
-                        ]
-                        create_report(report_path, report_text_safe, image_paths)
+                create_report(
+                    report_path,
+                    report_text_safe,
+                    images_info=images_info
+                )
+
                 if Path(report_path).exists():
                     with open(report_path, "rb") as f:
                         st.success("Report generated.")
@@ -802,13 +786,12 @@ with tab_export:
                         )
                 else:
                     st.error(
-                        "create_report ran but no PDF was found at the expected path. "
-                        "Check report_generator.create_report implementation."
+                        "create_report ran but no PDF was found at the expected path."
                     )
             except Exception as e:
                 st.error(f"Failed to create report via report_generator: {e}")
         else:
             st.error(
-                "report_generator.create_report is not available; cannot generate PDF here. "
-                "Make sure code/report_generator.py exists and is imported correctly."
+                "report_generator.create_report is not available. "
+                "Make sure code/report_generator.py exists."
             )
