@@ -22,6 +22,16 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import streamlit as st
 
+def save_multivariate_chart(fig, title, insight=""):
+    img_path = f"outputs/{title.replace(' ', '_').lower()}.png"
+    fig.savefig(img_path, bbox_inches="tight")
+
+    st.session_state["report_visuals"].append({
+        "image": img_path,
+        "title": title,
+        "insight": insight
+    })
+
 # ---------- Streamlit page config ----------
 st.set_page_config(page_title="AI Data Storyteller", layout="wide", page_icon="📊")
 # ---------- Session state initialization ----------
@@ -704,13 +714,24 @@ with tab_visuals:
                     ax=ax,
                 )
                 st.pyplot(fig)
-
+                if st.button("Save correlation heatmap"):
+                   save_multivariate_chart(
+                        fig,
+                        "Correlation Heatmap",
+                        "Shows strength and direction of relationships between numeric variables."
+                )
         # ---------- STACKED BAR ----------
         elif multi_chart == "Stacked bar chart":
             fig, ax = plt.subplots(figsize=(6, 4))
             pivot = pd.crosstab(data.iloc[:, 0], data.iloc[:, 1])
             pivot.plot(kind="bar", stacked=True, ax=ax)
             st.pyplot(fig)
+            if st.button("Save stacked bar chart"):
+               save_multivariate_chart(
+                    fig,
+                    "Stacked Bar Chart",
+                    "Compares category distribution across groups."
+            )
 
         # ---------- BOXPLOT ----------
         elif multi_chart == "Boxplot by category":
@@ -722,7 +743,12 @@ with tab_visuals:
                 ax=ax,
             )
             st.pyplot(fig)
-
+            if st.button("Save boxplot"):
+               save_multivariate_chart(
+                     fig,
+                     "Boxplot by Category",
+                     "Shows distribution and outliers across categories."
+            )
         # ---------- SCATTER ----------
         elif multi_chart == "Scatter with hue":
             fig, ax = plt.subplots(figsize=(6, 4))
@@ -744,7 +770,13 @@ with tab_visuals:
                 )
 
             st.pyplot(fig)
-
+            if st.button("Save scatter plot", key="save_scatter_multivariate"):
+               save_multivariate_chart(
+                    fig,
+            "Scatter Plot with Hue",
+            f"Relationship between {multi_cols[0]} and {multi_cols[1]}" +
+            (f" segmented by {multi_cols[2]}" if len(multi_cols) >= 3 else "")
+            )
         # ---------- LINE ----------
         elif multi_chart == "Line chart":
             fig, ax = plt.subplots(figsize=(6, 4))
@@ -752,6 +784,12 @@ with tab_visuals:
             ax.set_xlabel(multi_cols[0])
             ax.set_ylabel(multi_cols[1])
             st.pyplot(fig)
+            if st.button("Save line chart", key="save_line_multivariate"):
+               save_multivariate_chart(
+                    fig,
+            "Line Chart",
+            f"Trend of {multi_cols[1]} over {multi_cols[0]}"
+            )
 
         # ---------- PAIRPLOT ----------
         elif multi_chart == "Pairplot (numeric only)":
@@ -762,7 +800,12 @@ with tab_visuals:
             else:
                 pair_fig = sns.pairplot(numeric_df)
                 st.pyplot(pair_fig.fig)
-                
+                if st.button("Save pairplot"):
+                   save_multivariate_chart(
+                        fig,
+                "Pairplot",
+                "Shows pairwise relationships and distributions between numeric variables."
+               )
 # ---------- TAB 3: AI INSIGHTS ----------
 with tab_qna:
     st.markdown("### AI insights")
@@ -892,3 +935,4 @@ with tab_export:
                 "report_generator.create_report is not available. "
                 "Make sure code/report_generator.py exists."
             )
+
