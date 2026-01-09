@@ -6,7 +6,7 @@ AI Data Storyteller is an interactive analytics application that transforms raw 
 ---
 
 ## 🌐 Live Application
-🔗 https://ai-data-storyteller-cejbexjfmpt3pa4yluvt5p.streamlit.app/
+🔗 https://ai-data-storyteller-tjknvoyz2xonntsr3hz4kl.streamlit.app/
 
 ---
 
@@ -65,3 +65,4 @@ AI Data Storyteller is an interactive analytics application that transforms raw 
 ## 👩‍💻 Author
 **Akshatha Raj**  
  Aspiring Data Science Intern
+
